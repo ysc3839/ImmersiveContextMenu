@@ -14,4 +14,5 @@ This project is suitable if you want owner draw something to menu, because turni
 * No support for menu item bitmaps (`hbmpItem`, `hbmpChecked`, `hbmpUnchecked`). Explorer has this feature.
 * No fully support for Per-Monitor DPI, text size may be wrong after moved to another monitor. Explorer has this feature.
 * No support for right aligned text (For example: `ABC\tDEF` will make `DEF` right aligned). Explorer has this feature.
+* No support for default item (bold text). Explorer has this feature.
 * Menu item styles (`MFT_RADIOCHECK`) is not updated dynamically. Explorer DOES NOT has this feature too. Maybe it's because it doesn't reuse menu. It creates a new menu when showing, and destorys it after that. So it's no need to update styles dynamically.
