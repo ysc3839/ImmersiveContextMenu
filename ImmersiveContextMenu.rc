@@ -44,31 +44,41 @@ BEGIN
     BEGIN
         MENUITEM "E&xit",                       IDM_EXIT
     END
-    POPUP "Test"
+    POPUP "&Test"
     BEGIN
-        POPUP "View"
+        POPUP "&View"
         BEGIN
-            MENUITEM "Large icons",                 ID_VIEW_X
-            MENUITEM "Medium icons",                ID_VIEW_MEDIUMICONS
-            MENUITEM "Small icons",                 ID_VIEW_SMALLICONS
+            MENUITEM "La&rge icons",                ID_VIEW_X
+            MENUITEM "&Medium icons",               ID_VIEW_MEDIUMICONS
+            MENUITEM "Small ico&ns",                ID_VIEW_SMALLICONS
             MENUITEM SEPARATOR
-            MENUITEM "Auto arrange icons",          ID_VIEW_AUTOARRANGEICONS
-            MENUITEM "Align icons to grid",         ID_VIEW_ALIGNICONSTOGRID, CHECKED
+            MENUITEM "&Auto arrange icons",         ID_VIEW_AUTOARRANGEICONS
+            MENUITEM "Al&ign icons to grid",        ID_VIEW_ALIGNICONSTOGRID, CHECKED
             MENUITEM SEPARATOR
-            MENUITEM "Show desktop icons",          ID_VIEW_SHOWDESKTOPICONS, CHECKED
+            MENUITEM "Show &desktop icons",         ID_VIEW_SHOWDESKTOPICONS, CHECKED
         END
-        POPUP "Sort by"
+        POPUP "S&ort by"
         BEGIN
             MENUITEM "Name",                        ID_SORTBY_NAME
             MENUITEM "Size",                        ID_SORTBY_SIZE
             MENUITEM "Item type",                   ID_SORTBY_ITEMTYPE
             MENUITEM "Date modified",               ID_SORTBY_DATEMODIFIED
         END
-        MENUITEM "Refresh",                     ID_TEST_REFRESH
+        MENUITEM "R&efresh",                    ID_TEST_REFRESH
         MENUITEM SEPARATOR
-        MENUITEM "Paste",                       ID_TEST_PASTE
-        MENUITEM "Paste shortcut",              ID_TEST_PASTESHORTCUT
-        MENUITEM "Open in Visual Studio",       ID_TEST_OPENINVISUALSTUDIO
+        MENUITEM "&Paste",                      ID_TEST_PASTE
+        MENUITEM "Paste &shortcut",             ID_TEST_PASTESHORTCUT
+        MENUITEM "Open in &Visual Studio",      ID_TEST_OPENINVISUALSTUDIO
+        MENUITEM SEPARATOR
+        POPUP "Ne&w"
+        BEGIN
+            MENUITEM "&Folder",                     ID_NEW_FOLDER
+            MENUITEM "&Shortcut",                   ID_Menu
+            MENUITEM SEPARATOR
+        END
+        MENUITEM SEPARATOR
+        MENUITEM "&Display settings",           ID_TEST_DISPLAYSETTINGS
+        MENUITEM "Pe&rsonalize",                ID_TEST_PERSONALIZE
     END
     POPUP "&Help"
     BEGIN
