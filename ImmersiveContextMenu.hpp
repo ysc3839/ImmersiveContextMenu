@@ -587,7 +587,10 @@ namespace ImmersiveContextMenu
 							RECT rect = dis->rcItem;
 							rect.left += Scale(ContextMenuDefinitions::totalIconHorizontalPixels, hWnd);
 							rect.right -= Scale(17, hWnd);
-							DrawThemeText(hTheme.get(), dis->hDC, MENU_POPUPITEM, stateId, renderData->text.c_str(), static_cast<int>(renderData->text.size()), DT_SINGLELINE | DT_VCENTER, 0, &rect);
+
+							DWORD textFlags = DT_SINGLELINE | DT_VCENTER;
+							WI_SetFlagIf(textFlags, DT_HIDEPREFIX, !renderData->forceAccelerators && WI_IsFlagSet(dis->itemState, ODS_NOACCEL));
+							DrawThemeText(hTheme.get(), dis->hDC, MENU_POPUPITEM, stateId, renderData->text.c_str(), static_cast<int>(renderData->text.size()), textFlags, 0, &rect);
 						}
 
 						const bool isSubmenu = WI_IsFlagSet(renderData->menuFlags, SUBMENU);
