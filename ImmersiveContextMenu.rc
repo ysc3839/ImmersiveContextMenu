@@ -91,6 +91,86 @@ BEGIN
         BEGIN
             MENUITEM "Test4",                       ID_TEST3_TEST4
         END
+        MENUITEM "Test\tTab",                   ID_HELP_TEST
+        MENUITEM "Test veryveryveryveryveryveryveryveryveryveryveryverylong\tTab2", ID_HELP_TEST32797
+    END
+    POPUP "Test lots of items"
+    BEGIN
+        MENUITEM "A",                           ID_TESTLOTSOFITEMS_A
+        MENUITEM "B",                           ID_TESTLOTSOFITEMS_B
+        MENUITEM "C",                           ID_TESTLOTSOFITEMS_C
+        MENUITEM "D",                           ID_TESTLOTSOFITEMS_D
+        MENUITEM "E",                           ID_TESTLOTSOFITEMS_E
+        MENUITEM "F",                           ID_TESTLOTSOFITEMS_F
+        MENUITEM "G",                           ID_TESTLOTSOFITEMS_G
+        MENUITEM "H",                           ID_TESTLOTSOFITEMS_H
+        MENUITEM "I",                           ID_TESTLOTSOFITEMS_I
+        MENUITEM "J",                           ID_TESTLOTSOFITEMS_J
+        MENUITEM "K",                           ID_TESTLOTSOFITEMS_K
+        MENUITEM "L",                           ID_TESTLOTSOFITEMS_L
+        MENUITEM "M",                           ID_TESTLOTSOFITEMS_M
+        MENUITEM "N",                           ID_TESTLOTSOFITEMS_N
+        MENUITEM "O",                           ID_TESTLOTSOFITEMS_O
+        MENUITEM "P",                           ID_TESTLOTSOFITEMS_P
+        MENUITEM "Q",                           ID_TESTLOTSOFITEMS_Q
+        MENUITEM "R",                           ID_TESTLOTSOFITEMS_R
+        MENUITEM "S",                           ID_TESTLOTSOFITEMS_S
+        MENUITEM "T",                           ID_TESTLOTSOFITEMS_T
+        MENUITEM "U",                           ID_TESTLOTSOFITEMS_U
+        MENUITEM "V",                           ID_TESTLOTSOFITEMS_V
+        MENUITEM "W",                           ID_TESTLOTSOFITEMS_W
+        MENUITEM "X",                           ID_TESTLOTSOFITEMS_X
+        MENUITEM "Y",                           ID_TESTLOTSOFITEMS_YZ
+        MENUITEM "Z",                           ID_TESTLOTSOFITEMS_Z
+        MENUITEM SEPARATOR
+        MENUITEM "Z",                           ID_TESTLOTSOFITEMS_A32824
+        MENUITEM "Z",                           ID_TESTLOTSOFITEMS_B32825
+        MENUITEM "Z",                           ID_TESTLOTSOFITEMS_C32826
+        MENUITEM "Z",                           ID_TESTLOTSOFITEMS_D32827
+        MENUITEM "Z",                           ID_TESTLOTSOFITEMS_E32828
+        MENUITEM "Z",                           ID_TESTLOTSOFITEMS_F32829
+        MENUITEM "Z",                           ID_TESTLOTSOFITEMS_G32830
+        MENUITEM "Z",                           ID_TESTLOTSOFITEMS_H32831
+        MENUITEM "Z",                           ID_TESTLOTSOFITEMS_I32832
+        MENUITEM "Z",                           ID_TESTLOTSOFITEMS_J32833
+        MENUITEM "Z",                           ID_TESTLOTSOFITEMS_K32834
+        MENUITEM "Z",                           ID_TESTLOTSOFITEMS_Z32835
+        MENUITEM "Z",                           ID_TESTLOTSOFITEMS_Z32836
+        MENUITEM "Z",                           ID_TESTLOTSOFITEMS_Z32837
+        MENUITEM "Z",                           ID_TESTLOTSOFITEMS_Z32838
+        MENUITEM "Z",                           ID_TESTLOTSOFITEMS_Z32839
+        MENUITEM "Z",                           ID_TESTLOTSOFITEMS_Z32840
+        MENUITEM "Z",                           ID_TESTLOTSOFITEMS_Z32841
+        MENUITEM "Z",                           ID_TESTLOTSOFITEMS_Z32842
+        MENUITEM "Z",                           ID_TESTLOTSOFITEMS_Z32843
+        MENUITEM "Z",                           ID_TESTLOTSOFITEMS_Z32844
+        MENUITEM "Z",                           ID_TESTLOTSOFITEMS_Z32845
+        MENUITEM "Z",                           ID_TESTLOTSOFITEMS_Z32846
+        MENUITEM "Z",                           ID_TESTLOTSOFITEMS_Z32847
+        MENUITEM "Z",                           ID_TESTLOTSOFITEMS_Z32848
+        MENUITEM "Z",                           ID_TESTLOTSOFITEMS_Z32849
+        MENUITEM "Z",                           ID_TESTLOTSOFITEMS_Z32850
+        MENUITEM "Z",                           ID_TESTLOTSOFITEMS_Z32851
+        MENUITEM "Z",                           ID_TESTLOTSOFITEMS_Z32852
+        MENUITEM "Z",                           ID_TESTLOTSOFITEMS_Z32853
+        MENUITEM "Z",                           ID_TESTLOTSOFITEMS_Z32854
+        MENUITEM "Z",                           ID_TESTLOTSOFITEMS_Z32855
+        MENUITEM "Z",                           ID_TESTLOTSOFITEMS_Z32856
+        MENUITEM "Z",                           ID_TESTLOTSOFITEMS_Z32857
+        MENUITEM "Z",                           ID_TESTLOTSOFITEMS_Z32858
+        MENUITEM "Z",                           ID_TESTLOTSOFITEMS_Z32859
+        MENUITEM "Z",                           ID_TESTLOTSOFITEMS_Z32860
+        MENUITEM "Z",                           ID_TESTLOTSOFITEMS_Z32861
+        MENUITEM "Z",                           ID_TESTLOTSOFITEMS_Z32862
+        MENUITEM "Z",                           ID_TESTLOTSOFITEMS_Z32863
+        MENUITEM "Z",                           ID_TESTLOTSOFITEMS_Z32864
+        MENUITEM "Z",                           ID_TESTLOTSOFITEMS_Z32865
+        MENUITEM "Z",                           ID_TESTLOTSOFITEMS_Z32866
+        MENUITEM "Z",                           ID_TESTLOTSOFITEMS_Z32867
+        MENUITEM "Z",                           ID_TESTLOTSOFITEMS_Z32868
+        MENUITEM "Z",                           ID_TESTLOTSOFITEMS_Z32869
+        MENUITEM "Z",                           ID_TESTLOTSOFITEMS_Z32870
+        MENUITEM "Z",                           ID_TESTLOTSOFITEMS_Z32871
     END
 END
 
