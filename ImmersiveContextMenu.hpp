@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include "UxThemeHelper.hpp"
 
 #ifndef ICM_NOSTOREMENUDATA
 #define ICM_NOSTOREMENUDATA 1
@@ -87,6 +88,7 @@ namespace ContextMenuDefinitions
 	constexpr UINT iconHorizontalPadding = 8;
 	constexpr UINT totalIconHorizontalPixels = iconHorizontalPadding + iconSize + iconHorizontalPadding;
 	constexpr UINT rightPaddingPixels = 4;
+	constexpr UINT textRightPaddingPixels = 17;
 }
 
 namespace ImmersiveContextMenu
@@ -250,9 +252,10 @@ namespace ImmersiveContextMenu
 	{
 		const wchar_t* const lightClassName = WI_IsFlagSet(icmoFlags, ICMO_USESYSTEMTHEME) ? L"LightMode_ImmersiveStart::Menu" : L"ImmersiveStart::Menu";
 		const wchar_t* const className = useDarkTheme ? L"DarkMode_ImmersiveStart::Menu" : lightClassName;
-		HTHEME hTheme = OpenThemeData(hWnd, className);
+		auto dpi = GetDpiForWindow(hWnd);
+		HTHEME hTheme = OpenThemeDataForDpiWithFallback(hWnd, className, dpi);
 		if (!hTheme)
-			hTheme = OpenThemeData(GetParent(hWnd), className);
+			hTheme = OpenThemeDataForDpiWithFallback(GetParent(hWnd), className, dpi);
 		return wil::unique_htheme(hTheme);
 	}
 
@@ -489,6 +492,49 @@ namespace ImmersiveContextMenu
 		return SetPropW(hWnd, L"ImmersiveContextMenuArray", reinterpret_cast<HANDLE>(cmrdArray));
 	}
 
+	HRESULT _DrawMenuItemText(HTHEME hTheme, POPUPITEMSTATES popupItemState, LPDRAWITEMSTRUCT dis, ContextMenuRenderingData* renderData, LPRECT rcText)
+	{
+		wil::unique_hdc hCompatibleDC(CreateCompatibleDC(dis->hDC));
+		RETURN_LAST_ERROR_IF_NULL(hCompatibleDC);
+
+		const auto width = rcText->right - rcText->left, height = rcText->bottom - rcText->top;
+
+		BITMAPINFO bmi = { .bmiHeader = {
+			.biSize = sizeof(BITMAPINFOHEADER),
+			.biWidth = width,
+			.biHeight = -height,
+			.biPlanes = 1,
+			.biBitCount = 32,
+			.biCompression = BI_RGB
+		} };
+		void* bits;
+		wil::unique_hbitmap hBitmap(CreateDIBSection(hCompatibleDC.get(), &bmi, DIB_RGB_COLORS, &bits, nullptr, 0));
+		RETURN_IF_NULL_ALLOC(hBitmap);
+
+		auto select = wil::SelectObject(hCompatibleDC.get(), hBitmap.get());
+
+		const std::wstring_view text = renderData->text;
+		const auto pos = text.find_first_of(L'\t');
+		auto before = text.substr(0, pos);
+		auto after = (pos == std::wstring_view::npos) ? std::wstring_view() : text.substr(pos);
+
+		DWORD textFlags = DT_SINGLELINE | DT_VCENTER;
+		WI_SetFlagIf(textFlags, DT_HIDEPREFIX, !renderData->forceAccelerators && WI_IsFlagSet(dis->itemState, ODS_NOACCEL));
+		RECT rc = {
+			.right = width,
+			.bottom = height
+		};
+		const LONG fontWeight = WI_IsFlagSet(dis->itemState, ODS_DEFAULT) ? FW_BOLD : FW_NORMAL;
+		if (!before.empty())
+			RETURN_IF_FAILED(DrawThemeTextWithFontWeight(hTheme, hCompatibleDC.get(), MENU_POPUPITEM, popupItemState, before, textFlags | DT_LEFT, &rc, fontWeight));
+		if (!after.empty())
+			RETURN_IF_FAILED(DrawThemeTextWithFontWeight(hTheme, hCompatibleDC.get(), MENU_POPUPITEM, popupItemState, after, textFlags | DT_RIGHT, &rc, fontWeight));
+
+		RETURN_IF_WIN32_BOOL_FALSE(GdiAlphaBlend(dis->hDC, rcText->left, rcText->top, width, height, hCompatibleDC.get(), 0, 0, width, height, { 0, 0, 255, AC_SRC_ALPHA }));
+
+		return S_OK;
+	}
+
 	void _DrawGlyph(HWND hWnd, HTHEME hTheme, HDC hdc, MENUPARTS part, UINT menuFlags, POPUPITEMSTATES popupItemState, LPRECT rect)
 	{
 		wchar_t glyph = 0;
@@ -555,7 +601,7 @@ namespace ImmersiveContextMenu
 				else
 					className = L"ImmersiveStart::Menu";
 			}
-			wil::unique_htheme hTheme(OpenThemeData(0i64, className));
+			wil::unique_htheme hTheme(OpenThemeDataForDpiWithFallback(nullptr, className, GetDpiForWindow(hWnd)));
 			if (hTheme)
 			{
 				if (WI_IsFlagSet(renderData->cmpt, CMPT_TOP_PADDING))
@@ -586,11 +632,9 @@ namespace ImmersiveContextMenu
 						{
 							RECT rect = dis->rcItem;
 							rect.left += Scale(ContextMenuDefinitions::totalIconHorizontalPixels, hWnd);
-							rect.right -= Scale(17, hWnd);
+							rect.right -= Scale(ContextMenuDefinitions::textRightPaddingPixels, hWnd);
 
-							DWORD textFlags = DT_SINGLELINE | DT_VCENTER;
-							WI_SetFlagIf(textFlags, DT_HIDEPREFIX, !renderData->forceAccelerators && WI_IsFlagSet(dis->itemState, ODS_NOACCEL));
-							DrawThemeText(hTheme.get(), dis->hDC, MENU_POPUPITEM, stateId, renderData->text.c_str(), static_cast<int>(renderData->text.size()), textFlags, 0, &rect);
+							_DrawMenuItemText(hTheme.get(), stateId, dis, renderData, &rect);
 						}
 
 						const bool isSubmenu = WI_IsFlagSet(renderData->menuFlags, SUBMENU);
@@ -657,7 +701,7 @@ namespace ImmersiveContextMenu
 				else
 					className = L"ImmersiveStart::Menu";
 			}
-			wil::unique_htheme hTheme(OpenThemeData(0i64, className));
+			wil::unique_htheme hTheme(OpenThemeDataForDpiWithFallback(nullptr, className, GetDpiForWindow(hWnd)));
 			if (hTheme)
 			{
 				if (renderData->menuFlags == MFT_SEPARATOR)

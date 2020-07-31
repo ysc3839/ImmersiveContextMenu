@@ -161,6 +161,7 @@
     <ClInclude Include="pch.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="targetver.h" />
+    <ClInclude Include="UxThemeHelper.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ImmersiveContextMenu.cpp" />

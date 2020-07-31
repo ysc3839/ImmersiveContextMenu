@@ -11,8 +11,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 {
 	g_hInst = hInstance;
 
-	ImmersiveContextMenu::OverrideBackgroundColor(0, 0, ICMO_USESYSTEMTHEME);
-
 	WNDCLASSEXW wcex = {
 		.cbSize = sizeof(wcex),
 		.lpfnWndProc = WndProc,
@@ -50,7 +48,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	{
 	case WM_DRAWITEM:
 	case WM_MEASUREITEM:
-	case WM_INITMENUPOPUP:
+	//case WM_INITMENUPOPUP:
 		if (ImmersiveContextMenu::ContextMenuWndProc(hWnd, message, wParam, lParam))
 			return 0;
 		return DefWindowProcW(hWnd, message, wParam, lParam);
@@ -65,7 +63,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		SetMenuDefaultItem(GetSubMenu(hMenu, 2), IDM_ABOUT, FALSE);
 
 		auto cmrdArray = new CMRDArray;
-		for (int i = 0; i < 3; ++i)
+		for (int i = 0; i < 4; ++i)
 		{
 			ImmersiveContextMenu::ApplyOwnerDrawToMenu(GetSubMenu(hMenu, i), hWnd, nullptr, ICMO_FORCEMOUSESTYLING, cmrdArray);
 		}
