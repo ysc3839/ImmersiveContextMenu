@@ -26,9 +26,28 @@ bool RegGetBoolWithFlags(HKEY hkey, const wchar_t* subKey, const wchar_t* value,
 	return false;
 }
 
-int Scale(int i, HWND hWnd)
+enum ScaleType
+{
+	DPI,
+	PPI // This name is from debug symbol. Actually it means scale by window dpi, I don't know why it's called PPI.
+};
+
+int ScaleBySpecificDPI(int i, int dpi)
+{
+	return MulDiv(i, dpi, USER_DEFAULT_SCREEN_DPI);
+}
+
+int ScaleByPPI(int i, HWND hWnd)
 {
 	return MulDiv(i, GetDpiForWindow(hWnd), USER_DEFAULT_SCREEN_DPI);
+}
+
+int ScaleByType(ScaleType type, int i, HWND hWnd, int dpi)
+{
+	if (type == PPI)
+		return ScaleByPPI(i, hWnd);
+	else
+		return ScaleBySpecificDPI(i, dpi);
 }
 
 enum ImmersiveContextMenuOptions
@@ -62,6 +81,7 @@ struct ContextMenuRenderingData
 	/*HBITMAP hbmpChecked;
 	HBITMAP hbmpUnchecked;*/
 	ContextMenuPaddingType cmpt;
+	ScaleType scaleType;
 	UINT dpi;
 	bool useDarkTheme;
 	bool useSystemPadding;
@@ -104,7 +124,7 @@ namespace ImmersiveContextMenu
 	bool ShouldUseDarkTheme(ImmersiveContextMenuOptions icmoFlags) noexcept;
 	bool StoreContextMenuDataForItem([[maybe_unused]] HWND hWnd, [[maybe_unused]] ULONG_PTR itemData, [[maybe_unused]] UINT itemID, [[maybe_unused]] ContextMenuRenderingData* cmrd) noexcept;
 	UINT _GetDpiForMonitorFromPoint(LPPOINT point) noexcept;
-	HRESULT _GetRenderingDataForMenuItem(LPMENUITEMINFOW mii, std::wstring&& itemText, LPPOINT point, CMRDArray* cmrdArray, ContextMenuRenderingData* parentCmrd, ImmersiveContextMenuOptions icmoFlags, ContextMenuRenderingData** cmrd) noexcept;
+	HRESULT _GetRenderingDataForMenuItem(ScaleType type, LPMENUITEMINFOW mii, std::wstring&& itemText, LPPOINT point, CMRDArray* cmrdArray, ContextMenuRenderingData* parentCmrd, ImmersiveContextMenuOptions icmoFlags, ContextMenuRenderingData** cmrd) noexcept;
 	void _RemoveOwnerDrawFromMenuWorker(HMENU hMenu, HWND hWnd) noexcept;
 	void _RemoveParentArrayFromWindow(HWND hWnd) noexcept;
 	CMRDArray* _RetrieveParentArrayFromWindow(HWND hWnd) noexcept;
@@ -163,7 +183,7 @@ namespace ImmersiveContextMenu
 				&& (!parentCmrd || touchInput != WI_IsFlagSet(parentCmrd->cmpt, CMPT_TOUCH_INPUT)))
 			{
 				ContextMenuRenderingData* newRenderData;
-				hr = _GetRenderingDataForMenuItem(&mii, std::move(buf), point, cmrdArray, parentCmrd, icmoFlags, &newRenderData);
+				hr = _GetRenderingDataForMenuItem(WI_IsFlagSet(icmoFlags, ICMO_USEPPI) ? PPI : DPI, &mii, std::move(buf), point, cmrdArray, parentCmrd, icmoFlags, &newRenderData);
 				if (SUCCEEDED(hr))
 				{
 					renderData = newRenderData;
@@ -252,10 +272,9 @@ namespace ImmersiveContextMenu
 	{
 		const wchar_t* const lightClassName = WI_IsFlagSet(icmoFlags, ICMO_USESYSTEMTHEME) ? L"LightMode_ImmersiveStart::Menu" : L"ImmersiveStart::Menu";
 		const wchar_t* const className = useDarkTheme ? L"DarkMode_ImmersiveStart::Menu" : lightClassName;
-		auto dpi = GetDpiForWindow(hWnd);
-		HTHEME hTheme = OpenThemeDataForDpiWithFallback(hWnd, className, dpi);
+		HTHEME hTheme = OpenThemeData(hWnd, className);
 		if (!hTheme)
-			hTheme = OpenThemeDataForDpiWithFallback(GetParent(hWnd), className, dpi);
+			hTheme = OpenThemeData(GetParent(hWnd), className);
 		return wil::unique_htheme(hTheme);
 	}
 
@@ -399,7 +418,7 @@ namespace ImmersiveContextMenu
 		return dpiX;
 	}
 
-	HRESULT _GetRenderingDataForMenuItem(LPMENUITEMINFOW mii, std::wstring&& itemText, LPPOINT point, CMRDArray* cmrdArray, ContextMenuRenderingData* parentCmrd, ImmersiveContextMenuOptions icmoFlags, ContextMenuRenderingData** cmrd) noexcept
+	HRESULT _GetRenderingDataForMenuItem(ScaleType type, LPMENUITEMINFOW mii, std::wstring&& itemText, LPPOINT point, CMRDArray* cmrdArray, ContextMenuRenderingData* parentCmrd, ImmersiveContextMenuOptions icmoFlags, ContextMenuRenderingData** cmrd) noexcept
 	{
 		*cmrd = nullptr;
 		auto renderData = new(std::nothrow) ContextMenuRenderingData;
@@ -426,6 +445,7 @@ namespace ImmersiveContextMenu
 			WI_SetFlagIf(renderData->menuFlags, MFT_RADIOCHECK, WI_IsFlagSet(mii->fType, MFT_RADIOCHECK));
 
 			renderData->cmpt = CMPT_NONE;
+			renderData->scaleType = type;
 			renderData->useDarkTheme = shouldUseDarkTheme;
 			renderData->useSystemPadding = WI_IsFlagSet(icmoFlags, ICMO_USESYSTEMTHEME);
 
@@ -535,7 +555,7 @@ namespace ImmersiveContextMenu
 		return S_OK;
 	}
 
-	void _DrawGlyph(HWND hWnd, HTHEME hTheme, HDC hdc, MENUPARTS part, UINT menuFlags, POPUPITEMSTATES popupItemState, LPRECT rect)
+	void _DrawGlyph(HWND hWnd, UINT dpi, HTHEME hTheme, HDC hdc, MENUPARTS part, UINT menuFlags, POPUPITEMSTATES popupItemState, LPRECT rect, ScaleType type)
 	{
 		wchar_t glyph = 0;
 		int fontHeight = -13;
@@ -557,7 +577,7 @@ namespace ImmersiveContextMenu
 			break;
 		}
 
-		fontHeight = Scale(fontHeight, hWnd);
+		fontHeight = ScaleByType(type, fontHeight, hWnd, dpi);
 		if (fixFontHeight)
 		{
 			if (!(fontHeight % 2)) // Is even
@@ -601,7 +621,7 @@ namespace ImmersiveContextMenu
 				else
 					className = L"ImmersiveStart::Menu";
 			}
-			wil::unique_htheme hTheme(OpenThemeDataForDpiWithFallback(nullptr, className, GetDpiForWindow(hWnd)));
+			wil::unique_htheme hTheme(OpenThemeDataForDpiWithFallback(nullptr, className, renderData->scaleType == PPI ? GetDpiForWindow(hWnd) : renderData->dpi));
 			if (hTheme)
 			{
 				if (WI_IsFlagSet(renderData->cmpt, CMPT_TOP_PADDING))
@@ -609,14 +629,14 @@ namespace ImmersiveContextMenu
 					UINT height = ContextMenuDefinitions::topPaddingPixels;
 					if (renderData->useSystemPadding || WI_IsFlagSet(renderData->cmpt, CMPT_TOUCH_INPUT))
 						height = ContextMenuDefinitions::topPaddingPixelsWithPaddingOrTouch;
-					dis->rcItem.top += Scale(height, hWnd);
+					dis->rcItem.top += ScaleByType(renderData->scaleType, height, hWnd, renderData->dpi);
 				}
 				if (WI_IsFlagSet(renderData->cmpt, CMPT_BOTTOM_PADDING))
 				{
 					UINT height = ContextMenuDefinitions::bottomPaddingPixels;
 					if (renderData->useSystemPadding || WI_IsFlagSet(renderData->cmpt, CMPT_TOUCH_INPUT))
 						height = ContextMenuDefinitions::bottomPaddingPixelsWithPaddingOrTouch;
-					dis->rcItem.bottom -= Scale(height, hWnd);
+					dis->rcItem.bottom -= ScaleByType(renderData->scaleType, height, hWnd, renderData->dpi);
 				}
 
 				// Mouse Hover
@@ -631,8 +651,8 @@ namespace ImmersiveContextMenu
 						if (!renderData->text.empty())
 						{
 							RECT rect = dis->rcItem;
-							rect.left += Scale(ContextMenuDefinitions::totalIconHorizontalPixels, hWnd);
-							rect.right -= Scale(ContextMenuDefinitions::textRightPaddingPixels, hWnd);
+							rect.left += ScaleByType(renderData->scaleType, ContextMenuDefinitions::totalIconHorizontalPixels, hWnd, renderData->dpi);
+							rect.right -= ScaleByType(renderData->scaleType, ContextMenuDefinitions::textRightPaddingPixels, hWnd, renderData->dpi);
 
 							_DrawMenuItemText(hTheme.get(), stateId, dis, renderData, &rect);
 						}
@@ -644,32 +664,32 @@ namespace ImmersiveContextMenu
 							RECT rect = dis->rcItem;
 
 							const auto height = rect.bottom - rect.top;
-							const auto scaledIconSize = Scale(ContextMenuDefinitions::iconSize, hWnd);
+							const auto scaledIconSize = ScaleByType(renderData->scaleType, ContextMenuDefinitions::iconSize, hWnd, renderData->dpi);
 							const auto iconTop = (height - scaledIconSize) / 2; // Center icon
 							rect.top += iconTop;
 							rect.bottom = rect.top + scaledIconSize;
 
 							if (isSubmenu)
 							{
-								rect.right -= Scale(ContextMenuDefinitions::rightPaddingPixels, hWnd);
+								rect.right -= ScaleByType(renderData->scaleType, ContextMenuDefinitions::rightPaddingPixels, hWnd, renderData->dpi);
 								rect.left = rect.right - scaledIconSize;
 
-								_DrawGlyph(hWnd, hTheme.get(), dis->hDC, MENU_POPUPSUBMENU, renderData->menuFlags, stateId, &rect);
+								_DrawGlyph(hWnd, renderData->dpi, hTheme.get(), dis->hDC, MENU_POPUPSUBMENU, renderData->menuFlags, stateId, &rect, renderData->scaleType);
 							}
 
 							if (isChecked)
 							{
-								rect.left = dis->rcItem.left + Scale(ContextMenuDefinitions::iconHorizontalPadding, hWnd);
+								rect.left = dis->rcItem.left + ScaleByType(renderData->scaleType, ContextMenuDefinitions::iconHorizontalPadding, hWnd, renderData->dpi);
 								rect.right = rect.left + scaledIconSize;
 
-								_DrawGlyph(hWnd, hTheme.get(), dis->hDC, MENU_POPUPCHECK, renderData->menuFlags, stateId, &rect);
+								_DrawGlyph(hWnd, renderData->dpi, hTheme.get(), dis->hDC, MENU_POPUPCHECK, renderData->menuFlags, stateId, &rect, renderData->scaleType);
 							}
 						}
 					}
 					else
 					{
 						RECT rect = dis->rcItem;
-						const auto padding = Scale(ContextMenuDefinitions::separatorHorizontalPaddingPixels, hWnd);
+						const auto padding = ScaleByType(renderData->scaleType, ContextMenuDefinitions::separatorHorizontalPaddingPixels, hWnd, renderData->dpi);
 						rect.left += padding;
 						rect.right -= padding;
 
@@ -701,7 +721,7 @@ namespace ImmersiveContextMenu
 				else
 					className = L"ImmersiveStart::Menu";
 			}
-			wil::unique_htheme hTheme(OpenThemeDataForDpiWithFallback(nullptr, className, GetDpiForWindow(hWnd)));
+			wil::unique_htheme hTheme(OpenThemeDataForDpiWithFallback(nullptr, className, renderData->scaleType == PPI ? GetDpiForWindow(hWnd) : renderData->dpi));
 			if (hTheme)
 			{
 				if (renderData->menuFlags == MFT_SEPARATOR)
@@ -709,7 +729,7 @@ namespace ImmersiveContextMenu
 					UINT height = ContextMenuDefinitions::separatorVerticalPixels;
 					if (renderData->useSystemPadding || WI_IsFlagSet(renderData->cmpt, CMPT_TOUCH_INPUT))
 						height = ContextMenuDefinitions::separatorVerticalPixelsWithPadding;
-					mis->itemHeight = Scale(height, hWnd);
+					mis->itemHeight = ScaleByType(renderData->scaleType, height, hWnd, renderData->dpi);
 					return true;
 				}
 
@@ -751,7 +771,7 @@ namespace ImmersiveContextMenu
 								if (textHeight == ContextMenuDefinitions::textVerticalPixelsToFix)
 									--textHeight;
 
-								mis->itemWidth = textWidth + Scale(ContextMenuDefinitions::nonTextHorizontalPixels, hWnd);
+								mis->itemWidth = textWidth + ScaleByType(renderData->scaleType, ContextMenuDefinitions::nonTextHorizontalPixels, hWnd, renderData->dpi);
 
 								UINT height = ContextMenuDefinitions::nonTextVerticalPixelsTouchInput;
 								if (WI_IsFlagClear(renderData->cmpt, CMPT_TOUCH_INPUT))
@@ -761,7 +781,7 @@ namespace ImmersiveContextMenu
 									else
 										height = ContextMenuDefinitions::nonTextVerticalPixels;
 								}
-								mis->itemHeight = textHeight + Scale(height, hWnd);
+								mis->itemHeight = textHeight + ScaleByType(renderData->scaleType, height, hWnd, renderData->dpi);
 							}
 						}
 					}
@@ -771,14 +791,14 @@ namespace ImmersiveContextMenu
 					UINT height = ContextMenuDefinitions::topPaddingPixels;
 					if (renderData->useSystemPadding || WI_IsFlagSet(renderData->cmpt, CMPT_TOUCH_INPUT))
 						height = ContextMenuDefinitions::topPaddingPixelsWithPaddingOrTouch;
-					mis->itemHeight += Scale(height, hWnd);
+					mis->itemHeight += ScaleByType(renderData->scaleType, height, hWnd, renderData->dpi);
 				}
 				if (WI_IsFlagSet(renderData->cmpt, CMPT_BOTTOM_PADDING))
 				{
 					UINT height = ContextMenuDefinitions::bottomPaddingPixels;
 					if (renderData->useSystemPadding || WI_IsFlagSet(renderData->cmpt, CMPT_TOUCH_INPUT))
 						height = ContextMenuDefinitions::bottomPaddingPixelsWithPaddingOrTouch;
-					mis->itemHeight += Scale(height, hWnd);
+					mis->itemHeight += ScaleByType(renderData->scaleType, height, hWnd, renderData->dpi);
 				}
 				return true;
 			}
