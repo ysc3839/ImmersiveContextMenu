@@ -131,9 +131,32 @@ namespace ImmersiveContextMenu
 	bool _StoreParentArrayOnWindow(HWND hWnd, CMRDArray* cmrdArray) noexcept;
 
 	static bool shouldUseDarkTheme = false;
+	static IDWriteFactory* dwriteFactory = nullptr;
+	static IDWriteGdiInterop* dwriteGdiInterop = nullptr;
+	static ID2D1Factory* d2dFactory = nullptr;
+	static ID2D1DCRenderTarget* d2dDCRT = nullptr;
 
 	HRESULT ApplyOwnerDrawToMenu(HMENU hMenu, HWND hWnd, LPPOINT point, ImmersiveContextMenuOptions icmoFlags, CMRDArray* cmrdArray)
 	{
+		if (!dwriteFactory)
+		{
+			DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(dwriteFactory), reinterpret_cast<IUnknown**>(&dwriteFactory));
+			dwriteFactory->GetGdiInterop(&dwriteGdiInterop);
+
+			D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &d2dFactory);
+			D2D1_RENDER_TARGET_PROPERTIES props = {
+				D2D1_RENDER_TARGET_TYPE_DEFAULT,
+				{
+					DXGI_FORMAT_B8G8R8A8_UNORM,
+					D2D1_ALPHA_MODE_IGNORE
+				},
+				0,
+				0,
+				D2D1_RENDER_TARGET_USAGE_NONE,
+				D2D1_FEATURE_LEVEL_DEFAULT
+			};
+			d2dFactory->CreateDCRenderTarget(&props, &d2dDCRT);
+		}
 		if (WI_IsFlagClear(icmoFlags, ICMO_OVERRIDECOMPATCHECK))
 		{
 			if (!CanApplyOwnerDrawToMenu(hMenu, hWnd))
@@ -424,6 +447,12 @@ namespace ImmersiveContextMenu
 		auto renderData = new(std::nothrow) ContextMenuRenderingData;
 		if (renderData)
 		{
+			for (auto& ch : itemText)
+			{
+				if (ch == L'&')
+					ch = 0;
+			}
+
 			renderData->text = std::move(itemText);
 			renderData->hbmpItem = mii->hbmpItem;
 			//renderData->hbmpChecked = mii->hbmpChecked;
@@ -654,7 +683,52 @@ namespace ImmersiveContextMenu
 							rect.left += ScaleByType(renderData->scaleType, ContextMenuDefinitions::totalIconHorizontalPixels, hWnd, renderData->dpi);
 							rect.right -= ScaleByType(renderData->scaleType, ContextMenuDefinitions::textRightPaddingPixels, hWnd, renderData->dpi);
 
-							_DrawMenuItemText(hTheme.get(), stateId, dis, renderData, &rect);
+							NONCLIENTMETRICSW ncm = { sizeof(ncm) };
+							if (SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof(ncm), &ncm, 0))
+							{
+								const LOGFONTW* font = &ncm.lfMenuFont;
+								LOGFONTW themeFont;
+								if (SUCCEEDED(GetThemeFont(hTheme.get(), nullptr, MENU_POPUPITEM, 0, TMT_FONT, &themeFont)))
+								{
+									if (ncm.lfMenuFont.lfHeight <= 0)
+									{
+										if (ncm.lfMenuFont.lfHeight < themeFont.lfHeight)
+											themeFont.lfHeight = ncm.lfMenuFont.lfHeight;
+									}
+									else if (ncm.lfMenuFont.lfHeight > themeFont.lfHeight)
+										themeFont.lfHeight = ncm.lfMenuFont.lfHeight;
+								}
+								else
+									font = &themeFont;
+
+								wil::com_ptr<IDWriteFont> dwriteFont;
+								dwriteGdiInterop->CreateFontFromLOGFONT(font, dwriteFont.put());
+
+								float fontSize = 0;
+								if (font->lfHeight < 0)
+									fontSize = static_cast<float>(-font->lfHeight);
+								else
+									fontSize = static_cast<float>(MulDiv(font->lfHeight, renderData->dpi, 72));
+
+								wil::com_ptr<IDWriteTextFormat> textFormat;
+								auto hr = dwriteFactory->CreateTextFormat(font->lfFaceName, nullptr, dwriteFont->GetWeight(), dwriteFont->GetStyle(), dwriteFont->GetStretch(), fontSize, L"", textFormat.put());
+								textFormat->SetWordWrapping(DWRITE_WORD_WRAPPING_NO_WRAP);
+								textFormat->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
+
+								wil::com_ptr<IDWriteTextLayout> dwriteTextLayout;
+								hr = dwriteFactory->CreateTextLayout(renderData->text.c_str(), static_cast<UINT32>(renderData->text.size()), textFormat.get(), static_cast<float>(rect.right - rect.left), static_cast<float>(rect.bottom - rect.top), dwriteTextLayout.put());
+
+								d2dDCRT->BindDC(dis->hDC, &rect);
+								d2dDCRT->BeginDraw();
+
+								wil::com_ptr<ID2D1SolidColorBrush> brush;
+								d2dDCRT->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::White), brush.put());
+
+								d2dDCRT->DrawTextLayout({ 0,0 }, dwriteTextLayout.get(), brush.get(), D2D1_DRAW_TEXT_OPTIONS_ENABLE_COLOR_FONT);
+
+								d2dDCRT->EndDraw();
+							}
+							//_DrawMenuItemText(hTheme.get(), stateId, dis, renderData, &rect);
 						}
 
 						const bool isSubmenu = WI_IsFlagSet(renderData->menuFlags, SUBMENU);

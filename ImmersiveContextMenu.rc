@@ -42,7 +42,7 @@ IDC_IMMERSIVECONTEXTMENU MENU
 BEGIN
     POPUP "&File"
     BEGIN
-        MENUITEM "E&xit",                       IDM_EXIT
+        MENUITEM "😂Exit",                       IDM_EXIT
     END
     POPUP "&Test"
     BEGIN
@@ -82,7 +82,7 @@ BEGIN
     END
     POPUP "&Help"
     BEGIN
-        MENUITEM "&About ...",                  IDM_ABOUT
+        MENUITEM "😂&About ...",                  IDM_ABOUT
         MENUITEM SEPARATOR
         MENUITEM "Test1",                       ID_HELP_TEST1
         MENUITEM "Test2",                       ID_HELP_TEST2, CHECKED

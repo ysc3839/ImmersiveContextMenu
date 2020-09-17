@@ -18,5 +18,6 @@
 #include <wil/common.h>
 #include <wil/result.h>
 #include <wil/win32_helpers.h>
+#include <wil/com.h>
 
 #endif //PCH_H
