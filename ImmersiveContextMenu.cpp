@@ -63,10 +63,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		SetMenuDefaultItem(GetSubMenu(hMenu, 2), IDM_ABOUT, FALSE);
 
 		auto cmrdArray = new CMRDArray;
-		for (int i = 0; i < 4; ++i)
-		{
-			ImmersiveContextMenu::ApplyOwnerDrawToMenu(GetSubMenu(hMenu, i), hWnd, nullptr, ICMO_USEPPI | ICMO_FORCEMOUSESTYLING, cmrdArray);
-		}
+		ImmersiveContextMenu::ApplyOwnerDrawToMenu(hMenu, hWnd, nullptr, ICMO_USEPPI | ICMO_FORCEMOUSESTYLING | ICMO_MENUBAR, cmrdArray);
 	}
 	break;
 	case WM_COMMAND:

@@ -56,7 +56,8 @@ enum ImmersiveContextMenuOptions
 	ICMO_OVERRIDECOMPATCHECK = 0x2,
 	ICMO_FORCEMOUSESTYLING = 0x4,
 	ICMO_USESYSTEMTHEME = 0x8,
-	ICMO_ICMBRUSHAPPLIED = 0x10
+	ICMO_ICMBRUSHAPPLIED = 0x10,
+	ICMO_MENUBAR = 0x20
 };
 DEFINE_ENUM_FLAG_OPERATORS(ImmersiveContextMenuOptions);
 
@@ -73,6 +74,7 @@ struct ContextMenuRenderingData;
 using CMRDArray = std::vector<std::unique_ptr<ContextMenuRenderingData>>;
 
 #define SUBMENU 0x10 // For menuFlags
+#define MENUBAR 0x1 // For menuFlags
 struct ContextMenuRenderingData
 {
 	std::wstring text;
@@ -208,7 +210,7 @@ namespace ImmersiveContextMenu
 								if (WI_IsFlagSet(icmoFlags, ICMO_OVERRIDECOMPATCHECK))
 									HandleMergedMenus(mii.hSubMenu, hWnd);
 								else
-									ApplyOwnerDrawToMenu(mii.hSubMenu, hWnd, point, icmoFlags | ICMO_ICMBRUSHAPPLIED, cmrdArray);
+									ApplyOwnerDrawToMenu(mii.hSubMenu, hWnd, point, (icmoFlags & ~ICMO_MENUBAR) | ICMO_ICMBRUSHAPPLIED, cmrdArray);
 							}
 						}
 					}
@@ -216,7 +218,7 @@ namespace ImmersiveContextMenu
 					WI_SetFlagIf(renderData->cmpt, CMPT_TOUCH_INPUT, touchInput);
 				}
 			}
-			if (renderData)
+			if (renderData && WI_IsFlagClear(icmoFlags, ICMO_MENUBAR))
 			{
 				if (i != 0)
 					WI_ClearFlag(renderData->cmpt, CMPT_TOP_PADDING);
@@ -231,7 +233,7 @@ namespace ImmersiveContextMenu
 			return hr;
 		}
 		hr = S_OK;
-		if (renderData)
+		if (renderData && WI_IsFlagClear(icmoFlags, ICMO_MENUBAR))
 			WI_SetFlag(renderData->cmpt, CMPT_BOTTOM_PADDING);
 		if (WI_IsFlagClear(icmoFlags, ICMO_ICMBRUSHAPPLIED))
 			OverrideBackgroundColor(hMenu, hWnd, icmoFlags);
@@ -438,8 +440,10 @@ namespace ImmersiveContextMenu
 
 			if (WI_IsFlagSet(mii->fType, MFT_SEPARATOR))
 				renderData->menuFlags = MFT_SEPARATOR;
-			else if (mii->hSubMenu)
+			else if (mii->hSubMenu && WI_IsFlagClear(icmoFlags, ICMO_MENUBAR))
 				renderData->menuFlags = SUBMENU;
+			else if (WI_IsFlagSet(icmoFlags, ICMO_MENUBAR))
+				renderData->menuFlags = MENUBAR;
 			else
 				renderData->menuFlags = 0;
 			WI_SetFlagIf(renderData->menuFlags, MFT_RADIOCHECK, WI_IsFlagSet(mii->fType, MFT_RADIOCHECK));
@@ -540,6 +544,7 @@ namespace ImmersiveContextMenu
 
 		DWORD textFlags = DT_SINGLELINE | DT_VCENTER;
 		WI_SetFlagIf(textFlags, DT_HIDEPREFIX, !renderData->forceAccelerators && WI_IsFlagSet(dis->itemState, ODS_NOACCEL));
+		WI_SetFlagIf(textFlags, DT_CENTER, WI_IsFlagSet(renderData->menuFlags, MENUBAR));
 		RECT rc = {
 			.right = width,
 			.bottom = height
@@ -651,8 +656,11 @@ namespace ImmersiveContextMenu
 						if (!renderData->text.empty())
 						{
 							RECT rect = dis->rcItem;
-							rect.left += ScaleByType(renderData->scaleType, ContextMenuDefinitions::totalIconHorizontalPixels, hWnd, renderData->dpi);
-							rect.right -= ScaleByType(renderData->scaleType, ContextMenuDefinitions::textRightPaddingPixels, hWnd, renderData->dpi);
+							if (!WI_IsFlagSet(renderData->menuFlags, MENUBAR))
+							{
+								rect.left += ScaleByType(renderData->scaleType, ContextMenuDefinitions::totalIconHorizontalPixels, hWnd, renderData->dpi);
+								rect.right -= ScaleByType(renderData->scaleType, ContextMenuDefinitions::textRightPaddingPixels, hWnd, renderData->dpi);
+							}
 
 							_DrawMenuItemText(hTheme.get(), stateId, dis, renderData, &rect);
 						}
@@ -735,7 +743,7 @@ namespace ImmersiveContextMenu
 
 				HWND hWndMenu = FindWindowW(L"#32768", nullptr);
 				if (!hWndMenu)
-					return false;
+					hWndMenu = hWnd; // Menu Bar
 
 				auto hdc = wil::GetDC(hWndMenu);
 				if (hdc)
@@ -771,7 +779,9 @@ namespace ImmersiveContextMenu
 								if (textHeight == ContextMenuDefinitions::textVerticalPixelsToFix)
 									--textHeight;
 
-								mis->itemWidth = textWidth + ScaleByType(renderData->scaleType, ContextMenuDefinitions::nonTextHorizontalPixels, hWnd, renderData->dpi);
+								mis->itemWidth = textWidth;
+								if (WI_IsFlagClear(renderData->menuFlags, MENUBAR))
+									mis->itemWidth += ScaleByType(renderData->scaleType, ContextMenuDefinitions::nonTextHorizontalPixels, hWnd, renderData->dpi);
 
 								UINT height = ContextMenuDefinitions::nonTextVerticalPixelsTouchInput;
 								if (WI_IsFlagClear(renderData->cmpt, CMPT_TOUCH_INPUT))
